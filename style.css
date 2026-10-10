@@ -380,11 +380,11 @@ html.dark .icon-moon {
 }
 
 .hero-bio {
-  font-size: 1.05rem;
-  color: var(--ink-muted);
-  line-height: 1.6;
-  max-width: 50ch;
-  margin-bottom: 1.75rem;
+  font-size: 0.88rem;
+  color: var(--ink-subtle);
+  line-height: 1.5;
+  max-width: 48ch;
+  margin-bottom: 1.5rem;
 }
 
 .hero-actions {
