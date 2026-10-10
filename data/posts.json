@@ -1,0 +1,29 @@
+[
+  {
+    "id": "building-things",
+    "title": "What I build, and what I learn along the way",
+    "description": "Android apps, Go APIs, Discord bots, manga translation tools, and embedded projects as I prepare for an internship.",
+    "readTime": "2 min read",
+    "tags": ["Development", "Projects", "Personal"],
+    "date": "2026-09-08",
+    "file": "posts/BuildingThings.md"
+  },
+  {
+    "id": "hello",
+    "title": "Hello!",
+    "description": "Welcome to my new website! Check out my previous portfolio version.",
+    "readTime": "1 min read",
+    "tags": ["General", "Update"],
+    "date": "2026-06-10",
+    "file": "posts/Hello.md"
+  },
+  {
+    "id": "cosplaying",
+    "title": "My cosplay plans for HoyoFest: Evelyn Chevalier",
+    "description": "Buying or renting Clorinde's costume has been difficult, so I'm planning to cosplay Evelyn Chevalier from Zenless Zone Zero at HoyoFest.",
+    "readTime": "2 min read",
+    "tags": ["Personal", "Cosplay", "Anime"],
+    "date": "2026-06-09",
+    "file": "posts/Cosplaying.md"
+  }
+]

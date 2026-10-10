@@ -1,0 +1,60 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 500" width="100%" height="100%">
+  <defs>
+    <!-- Single Petal Definition centered around top vertical axis -->
+    <path id="sakura-petal" 
+          d="M 250 250
+             C 215 220 160 170 175 105
+             C 185 65 218 55 240 78
+             L 250 88
+             L 260 78
+             C 282 55 315 65 325 105
+             C 340 170 285 220 250 250 Z" />
+    
+    <!-- Single Stamen Unit with Stem and Anther dot -->
+    <g id="stamen-unit">
+      <line x1="250" y1="250" x2="250" y2="155" stroke="#ffffff" stroke-width="4.5" stroke-linecap="round" />
+      <circle cx="250" cy="150" r="9" fill="#ffffff" />
+    </g>
+
+    <!-- Shorter Inner Stamen Unit -->
+    <g id="stamen-unit-short">
+      <line x1="250" y1="250" x2="250" y2="175" stroke="#ffffff" stroke-width="4" stroke-linecap="round" />
+      <circle cx="250" cy="170" r="7" fill="#ffffff" />
+    </g>
+  </defs>
+
+  <!-- 5 Petals arranged in a circle with soft pink fill and slight opacity overlap -->
+  <g fill="#ffb4cf" opacity="0.94">
+    <!-- Top Petal -->
+    <use href="#sakura-petal" />
+    <!-- Top-Right Petal -->
+    <use href="#sakura-petal" transform="rotate(72 250 250)" />
+    <!-- Bottom-Right Petal -->
+    <use href="#sakura-petal" transform="rotate(144 250 250)" />
+    <!-- Bottom-Left Petal -->
+    <use href="#sakura-petal" transform="rotate(216 250 250)" />
+    <!-- Top-Left Petal -->
+    <use href="#sakura-petal" transform="rotate(288 250 250)" />
+  </g>
+
+  <!-- Center Pistil & Stamens Cluster -->
+  <g>
+    <!-- Alternating 10 Radiating Stamens (5 Long, 5 Short) -->
+    <!-- Long Stamens -->
+    <use href="#stamen-unit" transform="rotate(0 250 250)" />
+    <use href="#stamen-unit" transform="rotate(72 250 250)" />
+    <use href="#stamen-unit" transform="rotate(144 250 250)" />
+    <use href="#stamen-unit" transform="rotate(216 250 250)" />
+    <use href="#stamen-unit" transform="rotate(288 250 250)" />
+
+    <!-- Short Stamens (offset by 36 degrees) -->
+    <use href="#stamen-unit-short" transform="rotate(36 250 250)" />
+    <use href="#stamen-unit-short" transform="rotate(108 250 250)" />
+    <use href="#stamen-unit-short" transform="rotate(180 250 250)" />
+    <use href="#stamen-unit-short" transform="rotate(252 250 250)" />
+    <use href="#stamen-unit-short" transform="rotate(324 250 250)" />
+
+    <!-- Center White Disc -->
+    <circle cx="250" cy="250" r="18" fill="#ffffff" />
+  </g>
+</svg>
