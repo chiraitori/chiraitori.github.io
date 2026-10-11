@@ -212,66 +212,119 @@ function initLanyardPresence() {
       }
     }
 
-    // Spotify Card (Rendered FIRST)
-    if (activeSpotify) {
-      const spotifyEl = document.createElement('div');
-      spotifyEl.className = 'activity-card spotify-kind';
-      spotifyEl.innerHTML = `
-        <div class="activity-card-art-wrap">
-          <img src="${activeSpotify.album_art_url || ''}" alt="${escapeHtml(activeSpotify.album || 'Album Art')}" class="activity-card-art">
-        </div>
-        <div class="activity-card-body">
-          <div class="activity-card-badge">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10 10-4.5 10-10S17.5 2 12 2zm4.6 14.4c-.2.3-.6.4-.9.2-2.4-1.5-5.5-1.8-9.1-1-.4.1-.7-.2-.8-.5-.1-.4.2-.7.5-.8 4-.9 7.4-.5 10.1 1.2.3.2.4.6.2.9zm1.2-2.7c-.3.4-.8.5-1.1.3-2.8-1.7-7-2.2-10.2-1.2-.4.1-.9-.1-1-.5-.1-.4.1-.9.5-1 3.7-1.1 8.4-.6 11.6 1.4.3.1.4.6.2 1zm.1-2.8C14.5 9 8.2 8.8 4.8 9.9c-.5.2-1.1-.1-1.3-.6-.2-.5.1-1.1.6-1.3 4-1.2 10.9-1 14.8 1.4.5.3.6.9.3 1.4-.3.4-.9.6-1.3.1z"/>
-            </svg>
-            <span>Listening on Spotify</span>
-            <span class="spotify-eq">
-              <span class="spotify-eq-bar bar-1"></span>
-              <span class="spotify-eq-bar bar-2"></span>
-              <span class="spotify-eq-bar bar-3"></span>
-            </span>
-          </div>
-          <a href="${activeSpotify.track_id ? `https://open.spotify.com/track/${activeSpotify.track_id}` : 'https://open.spotify.com'}" target="_blank" rel="noopener noreferrer" class="activity-card-title">
-            ${escapeHtml(activeSpotify.song || 'Unknown Track')}
-          </a>
-          <div class="activity-card-sub">by ${escapeHtml(activeSpotify.artist || 'Unknown Artist')}</div>
-          ${activeSpotify.timestamps?.start && activeSpotify.timestamps?.end ? `
-          <div class="spotify-progress-row">
-            <div class="spotify-progress-track">
-              <div class="spotify-progress-fill" id="spotify-prog-fill"></div>
-            </div>
-            <span class="spotify-progress-time" id="spotify-prog-time">0:00 / 0:00</span>
-          </div>` : ''}
-        </div>
-      `;
-      activitiesWrap.appendChild(spotifyEl);
+    if (!activitiesWrap) return;
 
-      // Start dynamic progress ticker
-      if (activeSpotify.timestamps?.start && activeSpotify.timestamps?.end) {
+    // 4. In-place Presence Update (avoids recreating DOM and resetting progress on every presence event)
+    let spotifyEl = document.getElementById('spotify-card');
+
+    if (!activeSpotify) {
+      if (spotifyEl) {
+        spotifyEl.remove();
+        spotifyEl = null;
+      }
+      if (spotifyProgressRaf) {
+        cancelAnimationFrame(spotifyProgressRaf);
+        spotifyProgressRaf = null;
+      }
+    } else {
+      const songTitle = activeSpotify.song || 'Unknown Track';
+      const artistName = activeSpotify.artist || 'Unknown Artist';
+      const albumArt = activeSpotify.album_art_url || '';
+      const trackUrl = activeSpotify.track_id ? `https://open.spotify.com/track/${activeSpotify.track_id}` : 'https://open.spotify.com';
+      const hasTimes = !!(activeSpotify.timestamps?.start && activeSpotify.timestamps?.end);
+
+      if (!spotifyEl) {
+        spotifyEl = document.createElement('div');
+        spotifyEl.id = 'spotify-card';
+        spotifyEl.className = 'activity-card spotify-kind';
+        spotifyEl.innerHTML = `
+          <div class="activity-card-art-wrap">
+            <img src="${albumArt}" alt="${escapeHtml(activeSpotify.album || 'Album Art')}" class="activity-card-art" id="spotify-art">
+          </div>
+          <div class="activity-card-body">
+            <div class="activity-card-badge">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10 10-4.5 10-10S17.5 2 12 2zm4.6 14.4c-.2.3-.6.4-.9.2-2.4-1.5-5.5-1.8-9.1-1-.4.1-.7-.2-.8-.5-.1-.4.2-.7.5-.8 4-.9 7.4-.5 10.1 1.2.3.2.4.6.2.9zm1.2-2.7c-.3.4-.8.5-1.1.3-2.8-1.7-7-2.2-10.2-1.2-.4.1-.9-.1-1-.5-.1-.4.1-.9.5-1 3.7-1.1 8.4-.6 11.6 1.4.3.1.4.6.2 1zm.1-2.8C14.5 9 8.2 8.8 4.8 9.9c-.5.2-1.1-.1-1.3-.6-.2-.5.1-1.1.6-1.3 4-1.2 10.9-1 14.8 1.4.5.3.6.9.3 1.4-.3.4-.9.6-1.3.1z"/>
+              </svg>
+              <span>Listening on Spotify</span>
+              <span class="spotify-eq">
+                <span class="spotify-eq-bar bar-1"></span>
+                <span class="spotify-eq-bar bar-2"></span>
+                <span class="spotify-eq-bar bar-3"></span>
+              </span>
+            </div>
+            <a href="${trackUrl}" target="_blank" rel="noopener noreferrer" class="activity-card-title" id="spotify-title">
+              ${escapeHtml(songTitle)}
+            </a>
+            <div class="activity-card-sub" id="spotify-artist">by ${escapeHtml(artistName)}</div>
+            <div class="spotify-progress-row" id="spotify-prog-row" style="${hasTimes ? '' : 'display:none;'}">
+              <div class="spotify-progress-track">
+                <div class="spotify-progress-fill" id="spotify-prog-fill"></div>
+              </div>
+              <span class="spotify-progress-time" id="spotify-prog-time">0:00 / 0:00</span>
+            </div>
+          </div>
+        `;
+        // Insert as first child
+        if (activitiesWrap.firstChild) {
+          activitiesWrap.insertBefore(spotifyEl, activitiesWrap.firstChild);
+        } else {
+          activitiesWrap.appendChild(spotifyEl);
+        }
+      } else {
+        // Update in-place without flashing or resetting
+        const artEl = spotifyEl.querySelector('#spotify-art');
+        const titleEl = spotifyEl.querySelector('#spotify-title');
+        const artistEl = spotifyEl.querySelector('#spotify-artist');
+        const progRow = spotifyEl.querySelector('#spotify-prog-row');
+
+        if (artEl && artEl.src !== albumArt) artEl.src = albumArt;
+        if (titleEl) {
+          titleEl.textContent = songTitle;
+          titleEl.href = trackUrl;
+        }
+        if (artistEl) artistEl.textContent = `by ${artistName}`;
+        if (progRow) progRow.style.display = hasTimes ? '' : 'none';
+      }
+
+      // Continuous rAF Progress ticker
+      if (spotifyProgressRaf) {
+        cancelAnimationFrame(spotifyProgressRaf);
+        spotifyProgressRaf = null;
+      }
+
+      if (hasTimes) {
         const fillEl = spotifyEl.querySelector('#spotify-prog-fill');
         const timeEl = spotifyEl.querySelector('#spotify-prog-time');
         const { start, end } = activeSpotify.timestamps;
         const totalDuration = end - start;
 
+        // Immediate initial position before first RAF
+        const initialCurrent = Date.now() - start;
+        const initialRatio = Math.min(Math.max(initialCurrent / totalDuration, 0), 1);
+        if (fillEl) fillEl.style.width = `${(initialRatio * 100).toFixed(2)}%`;
+        if (timeEl) timeEl.textContent = `${formatTime(initialCurrent)} / ${formatTime(totalDuration)}`;
+
         function updateSpotifyProgress() {
           const current = Date.now() - start;
           const ratio = Math.min(Math.max(current / totalDuration, 0), 1);
-          if (fillEl) fillEl.style.width = `${(ratio * 100).toFixed(1)}%`;
+          if (fillEl) fillEl.style.width = `${(ratio * 100).toFixed(2)}%`;
           if (timeEl) timeEl.textContent = `${formatTime(current)} / ${formatTime(totalDuration)}`;
           if (ratio < 1) {
             spotifyProgressRaf = requestAnimationFrame(updateSpotifyProgress);
           }
         }
-        updateSpotifyProgress();
+        spotifyProgressRaf = requestAnimationFrame(updateSpotifyProgress);
       }
     }
 
     // Other Rich Activities (VS Code, Games, Crunchyroll, etc.)
     const otherActivities = (activities || []).filter(a => a.type !== 4 && a.name?.toLowerCase() !== 'spotify');
-    
-    // Pick first non-spotify activity
-    if (otherActivities.length > 0) {
+    let otherEl = document.getElementById('other-activity-card');
+
+    if (otherActivities.length === 0) {
+      if (otherEl) otherEl.remove();
+    } else {
       const act = otherActivities[0];
       const isCode = act.name?.toLowerCase().includes('visual studio code') || act.name?.toLowerCase() === 'code';
       const isCrunchyroll = /crunchyroll/i.test(act.name);
@@ -284,19 +337,33 @@ function initLanyardPresence() {
       const subtitle = act.state?.trim() || act.assets?.large_text || '';
       const imgUrl = getActivityImageUrl(act);
 
-      const actEl = document.createElement('div');
-      actEl.className = 'activity-card';
-      actEl.innerHTML = `
-        <div class="activity-card-art-wrap">
-          ${imgUrl ? `<img src="${imgUrl}" alt="${escapeHtml(act.name)}" class="activity-card-art">` : `<div class="activity-fallback-badge">${getFallbackInitials(act.name)}</div>`}
-        </div>
-        <div class="activity-card-body">
-          <div class="activity-card-badge">${escapeHtml(badgeLabel)}</div>
-          <div class="activity-card-title">${escapeHtml(title)}</div>
-          ${subtitle ? `<div class="activity-card-sub">${escapeHtml(subtitle)}</div>` : ''}
-        </div>
-      `;
-      activitiesWrap.appendChild(actEl);
+      if (!otherEl) {
+        otherEl = document.createElement('div');
+        otherEl.id = 'other-activity-card';
+        otherEl.className = 'activity-card';
+        otherEl.innerHTML = `
+          <div class="activity-card-art-wrap">
+            ${imgUrl ? `<img src="${imgUrl}" alt="${escapeHtml(act.name)}" class="activity-card-art">` : `<div class="activity-fallback-badge">${getFallbackInitials(act.name)}</div>`}
+          </div>
+          <div class="activity-card-body">
+            <div class="activity-card-badge">${escapeHtml(badgeLabel)}</div>
+            <div class="activity-card-title">${escapeHtml(title)}</div>
+            ${subtitle ? `<div class="activity-card-sub">${escapeHtml(subtitle)}</div>` : ''}
+          </div>
+        `;
+        activitiesWrap.appendChild(otherEl);
+      } else {
+        otherEl.innerHTML = `
+          <div class="activity-card-art-wrap">
+            ${imgUrl ? `<img src="${imgUrl}" alt="${escapeHtml(act.name)}" class="activity-card-art">` : `<div class="activity-fallback-badge">${getFallbackInitials(act.name)}</div>`}
+          </div>
+          <div class="activity-card-body">
+            <div class="activity-card-badge">${escapeHtml(badgeLabel)}</div>
+            <div class="activity-card-title">${escapeHtml(title)}</div>
+            ${subtitle ? `<div class="activity-card-sub">${escapeHtml(subtitle)}</div>` : ''}
+          </div>
+        `;
+      }
     }
   }
 

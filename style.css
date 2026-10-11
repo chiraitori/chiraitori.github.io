@@ -771,7 +771,7 @@ html.dark .spotify-progress-track {
   background: #1db954;
   border-radius: 9999px;
   width: 0%;
-  transition: width 0.3s linear;
+  will-change: width;
 }
 
 .spotify-progress-time {
