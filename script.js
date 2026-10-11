@@ -29,6 +29,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initPinnedProjects();
   initWritingFeed();
   initNavScrollSpy();
+  initSubtleMicroAnimations();
   
   const yearEl = document.getElementById('current-year');
   if (yearEl) yearEl.textContent = new Date().getFullYear();
@@ -594,6 +595,17 @@ async function initWritingFeed() {
         bodyEl.innerHTML = '<p style="color: var(--ink-muted);">Loading article...</p>';
         modal.showModal();
 
+        // Subtle GSAP modal scale & fade in (does not affect page layout)
+        if (window.gsap) {
+          const modalSurface = modal.querySelector('.modal-surface');
+          if (modalSurface) {
+            gsap.fromTo(modalSurface,
+              { opacity: 0, y: 12, scale: 0.97 },
+              { opacity: 1, y: 0, scale: 1, duration: 0.25, ease: 'power2.out', clearProps: 'transform,opacity' }
+            );
+          }
+        }
+
         try {
           let rawMd = markdownCache.get(post.file);
           if (!rawMd) {
@@ -652,9 +664,28 @@ async function initWritingFeed() {
   }
 
   if (closeBtn && modal) {
-    closeBtn.addEventListener('click', () => modal.close());
+    function closeModalAnimated() {
+      const modalSurface = modal.querySelector('.modal-surface');
+      if (window.gsap && modalSurface) {
+        gsap.to(modalSurface, {
+          opacity: 0,
+          y: 10,
+          scale: 0.97,
+          duration: 0.18,
+          ease: 'power2.in',
+          onComplete: () => {
+            modal.close();
+            gsap.set(modalSurface, { clearProps: 'all' });
+          }
+        });
+      } else {
+        modal.close();
+      }
+    }
+
+    closeBtn.addEventListener('click', closeModalAnimated);
     modal.addEventListener('click', (e) => {
-      if (e.target === modal) modal.close();
+      if (e.target === modal) closeModalAnimated();
     });
   }
 }
@@ -713,4 +744,37 @@ function escapeHtml(str) {
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#039;');
+}
+
+// ============================================================================
+// 9. Subtle GSAP Micro-Interactions (Zero Layout Impact)
+// ============================================================================
+function initSubtleMicroAnimations() {
+  if (!window.gsap) return;
+
+  // 1. Theme toggle smooth spin
+  const themeBtn = document.getElementById('theme-toggle-btn');
+  if (themeBtn) {
+    themeBtn.addEventListener('click', () => {
+      const activeIcon = themeBtn.querySelector('.theme-icon:not([style*="display: none"])') || themeBtn.querySelector('svg');
+      if (activeIcon) {
+        gsap.fromTo(activeIcon,
+          { rotation: -90, scale: 0.8 },
+          { rotation: 0, scale: 1, duration: 0.35, ease: 'back.out(1.8)', clearProps: 'transform' }
+        );
+      }
+    });
+  }
+
+  // 2. Sakura petal brand link micro-tilt
+  const brandLink = document.querySelector('.brand-link');
+  const brandIcon = document.querySelector('.brand-sakura-icon');
+  if (brandLink && brandIcon) {
+    brandLink.addEventListener('mouseenter', () => {
+      gsap.to(brandIcon, { rotation: 25, scale: 1.12, duration: 0.3, ease: 'power2.out' });
+    });
+    brandLink.addEventListener('mouseleave', () => {
+      gsap.to(brandIcon, { rotation: 0, scale: 1, duration: 0.4, ease: 'power2.out', clearProps: 'transform' });
+    });
+  }
 }
