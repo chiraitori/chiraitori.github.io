@@ -132,6 +132,9 @@ function initLanyardPresence() {
       .join('');
   }
 
+  let currentTrackId = null;
+  let trackTransitionTimeout = null;
+
   function applyPresence(data) {
     if (!data) return;
     const { discord_status, activities, spotify, listening_to_spotify, kv, discord_user } = data;
@@ -184,13 +187,7 @@ function initLanyardPresence() {
     if (locationEl) locationEl.textContent = kv?.location || 'Ho Chi Minh, Vietnam';
 
     // 4. Presence Activities
-    if (spotifyProgressRaf) {
-      cancelAnimationFrame(spotifyProgressRaf);
-      spotifyProgressRaf = null;
-    }
-
     if (!activitiesWrap) return;
-    activitiesWrap.innerHTML = '';
 
     // Robust Spotify Detection: check data.spotify OR activities array for Spotify
     let activeSpotify = (listening_to_spotify && spotify) ? spotify : null;
@@ -212,21 +209,24 @@ function initLanyardPresence() {
       }
     }
 
-    if (!activitiesWrap) return;
-
-    // 4. In-place Presence Update (avoids recreating DOM and resetting progress on every presence event)
+    // Spotify Card Handling (In-Place Smooth Transitions)
     let spotifyEl = document.getElementById('spotify-card');
 
     if (!activeSpotify) {
-      if (spotifyEl) {
-        spotifyEl.remove();
-        spotifyEl = null;
-      }
+      currentTrackId = null;
       if (spotifyProgressRaf) {
         cancelAnimationFrame(spotifyProgressRaf);
         spotifyProgressRaf = null;
       }
+      if (spotifyEl) {
+        spotifyEl.remove();
+        spotifyEl = null;
+      }
     } else {
+      const newTrackKey = (activeSpotify.track_id || activeSpotify.song || '') + '|' + (activeSpotify.artist || '');
+      const isNewSong = currentTrackId !== newTrackKey;
+      currentTrackId = newTrackKey;
+
       const songTitle = activeSpotify.song || 'Unknown Track';
       const artistName = activeSpotify.artist || 'Unknown Artist';
       const albumArt = activeSpotify.album_art_url || '';
@@ -234,6 +234,7 @@ function initLanyardPresence() {
       const hasTimes = !!(activeSpotify.timestamps?.start && activeSpotify.timestamps?.end);
 
       if (!spotifyEl) {
+        // Initial creation of card
         spotifyEl = document.createElement('div');
         spotifyEl.id = 'spotify-card';
         spotifyEl.className = 'activity-card spotify-kind';
@@ -265,48 +266,77 @@ function initLanyardPresence() {
             </div>
           </div>
         `;
-        // Insert as first child
         if (activitiesWrap.firstChild) {
           activitiesWrap.insertBefore(spotifyEl, activitiesWrap.firstChild);
         } else {
           activitiesWrap.appendChild(spotifyEl);
         }
       } else {
-        // Update in-place without flashing or resetting
+        // Card already exists: NEVER refresh the card, only smoothly update inner elements!
         const artEl = spotifyEl.querySelector('#spotify-art');
         const titleEl = spotifyEl.querySelector('#spotify-title');
         const artistEl = spotifyEl.querySelector('#spotify-artist');
         const progRow = spotifyEl.querySelector('#spotify-prog-row');
 
-        if (artEl && artEl.src !== albumArt) artEl.src = albumArt;
-        if (titleEl) {
-          titleEl.textContent = songTitle;
-          titleEl.href = trackUrl;
+        if (isNewSong) {
+          // Trigger subtle CSS crossfade animation on text and art
+          if (titleEl) {
+            titleEl.textContent = songTitle;
+            titleEl.href = trackUrl;
+            titleEl.classList.remove('spotify-text-fade');
+            void titleEl.offsetWidth; // Reflow
+            titleEl.classList.add('spotify-text-fade');
+          }
+          if (artistEl) {
+            artistEl.textContent = `by ${artistName}`;
+            artistEl.classList.remove('spotify-text-fade');
+            void artistEl.offsetWidth; // Reflow
+            artistEl.classList.add('spotify-text-fade');
+          }
+          if (artEl) {
+            if (artEl.src !== albumArt) artEl.src = albumArt;
+            artEl.classList.remove('spotify-art-fade');
+            void artEl.offsetWidth; // Reflow
+            artEl.classList.add('spotify-art-fade');
+          }
+        } else {
+          // Same track: keep text/art untouched to avoid any flicker
+          if (titleEl && titleEl.textContent !== songTitle) titleEl.textContent = songTitle;
+          if (artistEl && artistEl.textContent !== `by ${artistName}`) artistEl.textContent = `by ${artistName}`;
+          if (artEl && artEl.src !== albumArt) artEl.src = albumArt;
         }
-        if (artistEl) artistEl.textContent = `by ${artistName}`;
+
         if (progRow) progRow.style.display = hasTimes ? '' : 'none';
       }
 
-      // Continuous rAF Progress ticker
-      if (spotifyProgressRaf) {
-        cancelAnimationFrame(spotifyProgressRaf);
-        spotifyProgressRaf = null;
-      }
-
+      // Live Playback Timeline Progress Bar
       if (hasTimes) {
         const fillEl = spotifyEl.querySelector('#spotify-prog-fill');
         const timeEl = spotifyEl.querySelector('#spotify-prog-time');
         const { start, end } = activeSpotify.timestamps;
-        const totalDuration = end - start;
+        const totalDuration = Math.max(end - start, 1);
 
-        // Immediate initial position before first RAF
-        const initialCurrent = Date.now() - start;
-        const initialRatio = Math.min(Math.max(initialCurrent / totalDuration, 0), 1);
-        if (fillEl) fillEl.style.width = `${(initialRatio * 100).toFixed(2)}%`;
-        if (timeEl) timeEl.textContent = `${formatTime(initialCurrent)} / ${formatTime(totalDuration)}`;
+        if (spotifyProgressRaf) {
+          cancelAnimationFrame(spotifyProgressRaf);
+          spotifyProgressRaf = null;
+        }
+
+        if (isNewSong && fillEl) {
+          // Smoothly animate progress bar when song changes
+          fillEl.classList.add('track-changing');
+          const currentMs = Math.max(0, Date.now() - start);
+          const ratio = Math.min(Math.max(currentMs / totalDuration, 0), 1);
+          fillEl.style.width = `${(ratio * 100).toFixed(2)}%`;
+          if (timeEl) timeEl.textContent = `${formatTime(currentMs)} / ${formatTime(totalDuration)}`;
+
+          clearTimeout(trackTransitionTimeout);
+          trackTransitionTimeout = setTimeout(() => {
+            if (fillEl) fillEl.classList.remove('track-changing');
+          }, 450);
+        }
 
         function updateSpotifyProgress() {
-          const current = Date.now() - start;
+          const current = Math.max(0, Date.now() - start);
           const ratio = Math.min(Math.max(current / totalDuration, 0), 1);
           if (fillEl) fillEl.style.width = `${(ratio * 100).toFixed(2)}%`;
           if (timeEl) timeEl.textContent = `${formatTime(current)} / ${formatTime(totalDuration)}`;
@@ -315,6 +345,11 @@ function initLanyardPresence() {
           }
         }
         spotifyProgressRaf = requestAnimationFrame(updateSpotifyProgress);
+      } else {
+        if (spotifyProgressRaf) {
+          cancelAnimationFrame(spotifyProgressRaf);
+          spotifyProgressRaf = null;
+        }
       }
     }
 
