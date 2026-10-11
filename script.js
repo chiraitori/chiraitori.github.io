@@ -29,7 +29,6 @@ document.addEventListener('DOMContentLoaded', () => {
   initPinnedProjects();
   initWritingFeed();
   initNavScrollSpy();
-  initGsapAnimations();
   
   const yearEl = document.getElementById('current-year');
   if (yearEl) yearEl.textContent = new Date().getFullYear();
@@ -500,14 +499,6 @@ async function initPinnedProjects() {
         </div>
       </a>
     `).join('');
-
-    // GSAP staggered reveal for loaded project cards
-    if (window.gsap) {
-      gsap.fromTo('.project-card',
-        { opacity: 0, y: 20 },
-        { opacity: 1, y: 0, duration: 0.5, stagger: 0.08, ease: 'power2.out', clearProps: 'transform,opacity' }
-      );
-    }
   } catch (e) {
     console.warn('Projects API error:', e);
     grid.innerHTML = `
@@ -588,14 +579,6 @@ async function initWritingFeed() {
       </article>
     `).join('');
 
-    // GSAP staggered reveal for post cards
-    if (window.gsap) {
-      gsap.fromTo(feed.querySelectorAll('.post-card'),
-        { opacity: 0, y: 16 },
-        { opacity: 1, y: 0, duration: 0.45, stagger: 0.06, ease: 'power2.out', clearProps: 'transform,opacity' }
-      );
-    }
-
     feed.querySelectorAll('.post-card').forEach(card => {
       card.addEventListener('click', async () => {
         const id = card.getAttribute('data-id');
@@ -610,17 +593,6 @@ async function initWritingFeed() {
         const bodyEl = document.getElementById('modal-body');
         bodyEl.innerHTML = '<p style="color: var(--ink-muted);">Loading article...</p>';
         modal.showModal();
-
-        // GSAP animate modal opening
-        if (window.gsap) {
-          const modalSurface = modal.querySelector('.modal-surface');
-          if (modalSurface) {
-            gsap.fromTo(modalSurface,
-              { opacity: 0, y: 24, scale: 0.96 },
-              { opacity: 1, y: 0, scale: 1, duration: 0.35, ease: 'power3.out' }
-            );
-          }
-        }
 
         try {
           let rawMd = markdownCache.get(post.file);
@@ -680,25 +652,9 @@ async function initWritingFeed() {
   }
 
   if (closeBtn && modal) {
-    function closeModalWithAnimation() {
-      const modalSurface = modal.querySelector('.modal-surface');
-      if (window.gsap && modalSurface) {
-        gsap.to(modalSurface, {
-          opacity: 0,
-          y: 16,
-          scale: 0.96,
-          duration: 0.22,
-          ease: 'power2.in',
-          onComplete: () => modal.close()
-        });
-      } else {
-        modal.close();
-      }
-    }
-
-    closeBtn.addEventListener('click', closeModalWithAnimation);
+    closeBtn.addEventListener('click', () => modal.close());
     modal.addEventListener('click', (e) => {
-      if (e.target === modal) closeModalWithAnimation();
+      if (e.target === modal) modal.close();
     });
   }
 }
@@ -757,193 +713,4 @@ function escapeHtml(str) {
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#039;');
-}
-
-// ============================================================================
-// 9. GSAP Smooth Animations & Scroll-Triggered Reveals
-// ============================================================================
-function initGsapAnimations() {
-  if (!window.gsap) return;
-
-  // Register ScrollTrigger plugin if available
-  if (window.ScrollTrigger) {
-    gsap.registerPlugin(ScrollTrigger);
-  }
-
-  // 1. Hero Section Choreographed Entrance
-  const heroTl = gsap.timeline({ defaults: { ease: 'power3.out' } });
-
-  heroTl
-    .fromTo('.site-header', 
-      { y: -30, opacity: 0 }, 
-      { y: 0, opacity: 1, duration: 0.8, clearProps: 'transform,opacity' }
-    )
-    .fromTo('.hero-title',
-      { y: 35, opacity: 0 },
-      { y: 0, opacity: 1, duration: 0.8, clearProps: 'transform,opacity' },
-      '-=0.45'
-    )
-    .fromTo('.hero-subtitle',
-      { y: 25, opacity: 0 },
-      { y: 0, opacity: 1, duration: 0.7, clearProps: 'transform,opacity' },
-      '-=0.55'
-    )
-    .fromTo('.hero-bio',
-      { y: 15, opacity: 0 },
-      { y: 0, opacity: 0.65, duration: 0.6, clearProps: 'transform' },
-      '-=0.5'
-    )
-    .fromTo('.hero-actions .btn',
-      { y: 20, opacity: 0 },
-      { y: 0, opacity: 1, duration: 0.6, stagger: 0.12, clearProps: 'transform,opacity' },
-      '-=0.45'
-    )
-    .fromTo('.hero-card',
-      { y: 40, opacity: 0, scale: 0.96 },
-      { y: 0, opacity: 1, scale: 1, duration: 0.9, ease: 'back.out(1.15)', clearProps: 'transform,opacity' },
-      '-=0.75'
-    );
-
-  // 2. Scroll-Triggered Section Reveals
-  if (window.ScrollTrigger) {
-    // About Section
-    gsap.fromTo('#about .section-header',
-      { opacity: 0, y: 30 },
-      {
-        opacity: 1,
-        y: 0,
-        duration: 0.7,
-        ease: 'power2.out',
-        clearProps: 'transform,opacity',
-        scrollTrigger: {
-          trigger: '#about',
-          start: 'top 85%'
-        }
-      }
-    );
-
-    gsap.fromTo('.about-container',
-      { opacity: 0, y: 35 },
-      {
-        opacity: 1,
-        y: 0,
-        duration: 0.8,
-        ease: 'power2.out',
-        clearProps: 'transform,opacity',
-        scrollTrigger: {
-          trigger: '.about-container',
-          start: 'top 85%'
-        }
-      }
-    );
-
-    gsap.fromTo('.skill-pill',
-      { opacity: 0, scale: 0.88, y: 10 },
-      {
-        opacity: 1,
-        scale: 1,
-        y: 0,
-        duration: 0.4,
-        stagger: 0.03,
-        ease: 'back.out(1.5)',
-        clearProps: 'transform,opacity',
-        scrollTrigger: {
-          trigger: '.skills-card-content',
-          start: 'top 85%'
-        }
-      }
-    );
-
-    // Projects Section Header
-    gsap.fromTo('#projects .section-header',
-      { opacity: 0, y: 30 },
-      {
-        opacity: 1,
-        y: 0,
-        duration: 0.7,
-        ease: 'power2.out',
-        clearProps: 'transform,opacity',
-        scrollTrigger: {
-          trigger: '#projects',
-          start: 'top 85%'
-        }
-      }
-    );
-
-    // Writing Section Header & Sidebar
-    gsap.fromTo('#writing .section-header',
-      { opacity: 0, y: 30 },
-      {
-        opacity: 1,
-        y: 0,
-        duration: 0.7,
-        ease: 'power2.out',
-        clearProps: 'transform,opacity',
-        scrollTrigger: {
-          trigger: '#writing',
-          start: 'top 85%'
-        }
-      }
-    );
-
-    gsap.fromTo('.posts-sidebar',
-      { opacity: 0, x: -25 },
-      {
-        opacity: 1,
-        x: 0,
-        duration: 0.7,
-        ease: 'power2.out',
-        clearProps: 'transform,opacity',
-        scrollTrigger: {
-          trigger: '.posts-layout',
-          start: 'top 85%'
-        }
-      }
-    );
-
-    // Contact Section
-    gsap.fromTo('.contact-card',
-      { opacity: 0, y: 40, scale: 0.97 },
-      {
-        opacity: 1,
-        y: 0,
-        scale: 1,
-        duration: 0.8,
-        ease: 'power3.out',
-        clearProps: 'transform,opacity',
-        scrollTrigger: {
-          trigger: '#contact',
-          start: 'top 85%'
-        }
-      }
-    );
-
-    gsap.fromTo('.contact-item',
-      { opacity: 0, y: 15 },
-      {
-        opacity: 1,
-        y: 0,
-        duration: 0.5,
-        stagger: 0.1,
-        ease: 'power2.out',
-        clearProps: 'transform,opacity',
-        scrollTrigger: {
-          trigger: '.contact-links',
-          start: 'top 90%'
-        }
-      }
-    );
-  }
-
-  // 3. Subtle Interactive Micro-Tilt on Brand Sakura Petals
-  const brandLink = document.querySelector('.brand-link');
-  const brandIcon = document.querySelector('.brand-sakura-icon');
-  if (brandLink && brandIcon) {
-    brandLink.addEventListener('mouseenter', () => {
-      gsap.to(brandIcon, { rotation: 35, scale: 1.18, duration: 0.45, ease: 'back.out(2)' });
-    });
-    brandLink.addEventListener('mouseleave', () => {
-      gsap.to(brandIcon, { rotation: 0, scale: 1, duration: 0.5, ease: 'power2.out' });
-    });
-  }
 }
