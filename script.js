@@ -12,6 +12,8 @@
 const DISCORD_USER_ID = '685716988471148552';
 const GITHUB_USERNAME = 'chiraitori';
 const PINNED_REPOS_API = 'https://gh.chiraitori.dev/api/v1/pinned/chiraitori?raw=true';
+const GOYARD_WS_URL = 'wss://goyard.chiraitori.dev/socket';
+const GOYARD_REST_URL = 'https://goyard.chiraitori.dev/v1/users';
 const BIRTH_DATE = new Date('2005-10-28T00:00:00+07:00');
 
 // Path to dynamic posts manifest
@@ -300,16 +302,23 @@ function initLanyardPresence() {
 
   async function fetchREST() {
     try {
-      const res = await fetch(`https://api.lanyard.rest/v1/users/${DISCORD_USER_ID}`);
+      const res = await fetch(`${GOYARD_REST_URL}/${DISCORD_USER_ID}`);
       const json = await res.json();
       if (json.success) applyPresence(json.data);
     } catch (e) {
-      console.warn('Lanyard fallback error:', e);
+      console.warn('Goyard REST error, trying fallback:', e);
+      try {
+        const fallbackRes = await fetch(`https://api.lanyard.rest/v1/users/${DISCORD_USER_ID}`);
+        const fallbackJson = await fallbackRes.json();
+        if (fallbackJson.success) applyPresence(fallbackJson.data);
+      } catch (err) {
+        console.warn('Presence fallback error:', err);
+      }
     }
   }
 
   try {
-    const ws = new WebSocket('wss://api.lanyard.rest/socket');
+    const ws = new WebSocket(GOYARD_WS_URL);
     let heartbeat;
 
     ws.onmessage = (event) => {
@@ -328,7 +337,7 @@ function initLanyardPresence() {
           applyPresence(msg.d);
         }
       } catch (err) {
-        console.error('Lanyard ws parse error:', err);
+        console.error('Goyard ws parse error:', err);
       }
     };
 
